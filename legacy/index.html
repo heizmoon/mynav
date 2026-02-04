@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Nexus | 个人导航</title>
+    <style>
+        :root {
+            --bg-color: #0a0a0c;
+            --card-bg: rgba(20, 20, 25, 0.6);
+            --card-border: 1px solid rgba(255, 255, 255, 0.1);
+            --accent-cyan: #00f3ff;
+            --accent-purple: #bc13fe;
+            --text-main: #e0e0e0;
+            --text-dim: #888;
+            --glow-cyan: 0 0 10px rgba(0, 243, 255, 0.5);
+            --glow-purple: 0 0 10px rgba(188, 19, 254, 0.5);
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        
+        body {
+            background-color: var(--bg-color);
+            background-image: 
+                linear-gradient(rgba(0, 243, 255, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 243, 255, 0.03) 1px, transparent 1px);
+            background-size: 30px 30px;
+            color: var(--text-main);
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding-top: 80px;
+        }
+
+        /* 搜索区域 */
+        .search-container {
+            width: 100%;
+            max-width: 600px;
+            margin-bottom: 60px;
+            position: relative;
+            z-index: 10;
+        }
+
+        .search-tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+            padding-left: 5px;
+        }
+
+        .tab {
+            padding: 5px 15px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            color: var(--text-dim);
+            border: 1px solid transparent;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            clip-path: polygon(10% 0, 100% 0, 100% 100%, 0 100%);
+        }
+
+        .tab.active {
+            color: var(--bg-color);
+            background: var(--accent-cyan);
+            font-weight: bold;
+            box-shadow: var(--glow-cyan);
+        }
+
+        .search-input-wrapper {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+
+        #search-input {
+            width: 100%;
+            padding: 15px 20px;
+            font-size: 1.1rem;
+            background: rgba(0, 0, 0, 0.5);
+            border: 1px solid var(--accent-cyan);
+            color: white;
+            outline: none;
+            border-radius: 4px;
+            box-shadow: 0 0 15px rgba(0, 243, 255, 0.1);
+            transition: box-shadow 0.3s ease;
+        }
+
+        #search-input:focus {
+            box-shadow: 0 0 25px rgba(0, 243, 255, 0.3);
+        }
+
+        /* 主体内容网格 */
+        .main-grid {
+            width: 100%;
+            max-width: 1200px;
+            padding: 0 20px;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+            padding-bottom: 50px;
+        }
+
+        .category-section {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .category-title {
+            font-size: 0.85rem;
+            color: var(--accent-purple);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            border-bottom: 1px solid rgba(188, 19, 254, 0.3);
+            padding-bottom: 5px;
+            margin-bottom: 5px;
+            text-shadow: 0 0 5px rgba(188, 19, 254, 0.5);
+        }
+
+        .links-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+            gap: 15px;
+        }
+
+        .link-card {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: var(--card-bg);
+            border: var(--card-border);
+            padding: 15px 10px;
+            text-decoration: none;
+            border-radius: 8px;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+            backdrop-filter: blur(5px);
+        }
+
+        .link-card:hover {
+            transform: translateY(-3px);
+            border-color: var(--accent-cyan);
+            box-shadow: var(--glow-cyan);
+            background: rgba(0, 243, 255, 0.05);
+        }
+
+        .link-card img {
+            width: 32px;
+            height: 32px;
+            margin-bottom: 10px;
+            border-radius: 4px;
+            object-fit: cover;
+        }
+
+        .link-card span {
+            color: var(--text-main);
+            font-size: 0.9rem;
+            text-align: center;
+            font-weight: 500;
+        }
+
+        /* 页内搜索时的隐藏状态 */
+        .hidden {
+            display: none !important;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="search-container">
+        <div class="search-tabs">
+            <div class="tab active" data-mode="google">Google</div>
+            <div class="tab" data-mode="bing">Bing</div>
+            <div class="tab" data-mode="filter">页内查找</div>
+        </div>
+        <div class="search-input-wrapper">
+            <input type="text" id="search-input" placeholder="Search Google..." autofocus>
+        </div>
+    </div>
+
+    <div class="main-grid" id="main-content">
+        </div>
+
+    <script>
+        // 链接数据配置
+        const linksData = [
+            {
+                category: "AI & Tools",
+                items: [
+                    { name: "Gemini", url: "https://gemini.google.com" },
+                    { name: "ChatGPT", url: "https://chatgpt.com/" },
+                    { name: "Google Flow", url: "https://labs.google/fx/zh/tools/flow" },
+                    { name: "Google Whisk", url: "https://labs.google/fx/zh/tools/whisk" },
+                    { name: "Jimeng AI", url: "https://jimeng.jianying.com/ai-tool/generate" }
+                ]
+            },
+            {
+                category: "Dev & Code",
+                items: [
+                    { name: "GitHub", url: "https://github.com/" },
+                    { name: "Vercel Project", url: "https://vercel.com/heizmoons-projects" },
+                    { name: "Hugging Face", url: "https://huggingface.co/" },
+                    { name: "Claw Cloud", url: "https://ap-northeast-1.run.claw.cloud/" }
+                ]
+            },
+            {
+                category: "Game Dev",
+                items: [
+                    { name: "Itch.io", url: "https://itch.io/" },
+                    { name: "TapTap Dev", url: "https://developer.taptap.cn/" },
+                    { name: "3839 Console", url: "https://open.3839.com/console/" }
+                ]
+            },
+            {
+                category: "Media & Social",
+                items: [
+                    { name: "YouTube", url: "https://www.youtube.com/" },
+                    { name: "Bilibili", url: "https://www.bilibili.com/" },
+                    { name: "Discord", url: "https://discord.com/app" }
+                ]
+            },
+            {
+                category: "Mail",
+                items: [
+                    { name: "Gmail", url: "https://mail.google.com/" },
+                    { name: "163 Mail", url: "https://mail.163.com/" },
+                    { name: "QQ Mail", url: "https://mail.qq.com/" }
+                ]
+            }
+        ];
+
+        const mainContent = document.getElementById('main-content');
+        const searchInput = document.getElementById('search-input');
+        const tabs = document.querySelectorAll('.tab');
+        
+        let currentMode = 'google';
+
+        // 初始化渲染
+        function renderLinks() {
+            mainContent.innerHTML = '';
+            linksData.forEach(cat => {
+                const section = document.createElement('div');
+                section.className = 'category-section';
+                
+                const title = document.createElement('div');
+                title.className = 'category-title';
+                title.textContent = cat.category;
+                
+                const grid = document.createElement('div');
+                grid.className = 'links-grid';
+                
+                cat.items.forEach(link => {
+                    const a = document.createElement('a');
+                    a.href = link.url;
+                    a.className = 'link-card';
+                    a.target = "_blank"; // 在新标签页打开
+                    
+                    // 获取 Favicon
+                    const iconUrl = `https://s2.googleusercontent.com/s2/favicons?domain_url=${link.url}&sz=64`;
+                    
+                    a.innerHTML = `
+                        <img src="${iconUrl}" alt="${link.name}" onerror="this.src='data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0iIzg4OCI+PHBhdGggZD0iTTEyIDJDMiA4IDIgOCAyIDEyczAgMTAgMTAgMTBzMTAgMCAxMC0xMFMxMiAyIDEyIDJ6Ii8+PC9zdmc+'">
+                        <span>${link.name}</span>
+                    `;
+                    // 用于搜索的数据属性
+                    a.dataset.name = link.name.toLowerCase();
+                    grid.appendChild(a);
+                });
+
+                section.appendChild(title);
+                section.appendChild(grid);
+                mainContent.appendChild(section);
+            });
+        }
+
+        renderLinks();
+
+        // 标签切换逻辑
+        tabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                // 移除旧激活状态
+                document.querySelector('.tab.active').classList.remove('active');
+                // 激活新标签
+                tab.classList.add('active');
+                
+                currentMode = tab.dataset.mode;
+                searchInput.value = '';
+                searchInput.focus();
+
+                // 恢复所有链接显示
+                filterLinks('');
+
+                // 更新 Placeholder
+                if(currentMode === 'google') searchInput.placeholder = 'Search Google...';
+                else if(currentMode === 'bing') searchInput.placeholder = 'Search Bing...';
+                else if(currentMode === 'filter') searchInput.placeholder = 'Type to filter links...';
+            });
+        });
+
+        // 搜索与过滤逻辑
+        searchInput.addEventListener('input', (e) => {
+            if (currentMode === 'filter') {
+                filterLinks(e.target.value.trim().toLowerCase());
+            }
+        });
+
+        searchInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                const query = searchInput.value.trim();
+                if (!query) return;
+
+                if (currentMode === 'google') {
+                    window.location.href = `https://www.google.com/search?q=${encodeURIComponent(query)}`;
+                } else if (currentMode === 'bing') {
+                    window.location.href = `https://www.bing.com/search?q=${encodeURIComponent(query)}`;
+                } else if (currentMode === 'filter') {
+                    // 页内模式回车可以打开第一个匹配项（可选功能）
+                    const firstVisible = document.querySelector('.link-card:not(.hidden)');
+                    if (firstVisible) firstVisible.click();
+                }
+            }
+        });
+
+        function filterLinks(text) {
+            const sections = document.querySelectorAll('.category-section');
+            
+            sections.forEach(section => {
+                const links = section.querySelectorAll('.link-card');
+                let hasVisibleLinks = false;
+
+                links.forEach(link => {
+                    if (link.dataset.name.includes(text)) {
+                        link.classList.remove('hidden');
+                        hasVisibleLinks = true;
+                    } else {
+                        link.classList.add('hidden');
+                    }
+                });
+
+                // 如果整个分类下没有匹配链接，隐藏分类标题
+                if (hasVisibleLinks) {
+                    section.classList.remove('hidden');
+                } else {
+                    section.classList.add('hidden');
+                }
+            });
+        }
+    </script>
+</body>
+</html>
