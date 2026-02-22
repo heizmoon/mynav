@@ -6,15 +6,22 @@ import { CategoryData, LinkItem } from '@/lib/types';
 interface AddLinkModalProps {
     isOpen: boolean;
     onClose: () => void;
-    onAdd: (category: string, item: LinkItem) => void;
+    onAdd: (category: string, item: LinkItem, newCategoryTitle?: string) => void;
     categories: CategoryData[];
 }
 
 export function AddLinkModal({ isOpen, onClose, onAdd, categories }: AddLinkModalProps) {
     const [url, setUrl] = useState('');
     const [name, setName] = useState('');
-    const [selectedCat, setSelectedCat] = useState(categories[0]?.id || '');
+    const [selectedCat, setSelectedCat] = useState('');
+    const [newCategoryName, setNewCategoryName] = useState('');
     const [loading, setLoading] = useState(false);
+
+    React.useEffect(() => {
+        if (isOpen && !selectedCat && categories.length > 0) {
+            setSelectedCat(categories[0].id);
+        }
+    }, [isOpen, categories, selectedCat]);
 
     if (!isOpen) return null;
 
@@ -28,18 +35,30 @@ export function AddLinkModal({ isOpen, onClose, onAdd, categories }: AddLinkModa
             const data = await res.json();
             const icon = data.icon || undefined;
 
+            let hostName = url;
+            try {
+                hostName = new URL(url).hostname;
+            } catch (e) {
+                // fallback to the url itself if parsing fails
+            }
+
             // 2. Create item
             const newItem: LinkItem = {
                 id: crypto.randomUUID(),
-                name: name || new URL(url).hostname,
+                name: name || hostName,
                 url,
                 icon
             };
 
-            onAdd(selectedCat, newItem);
+            const isNewCat = selectedCat === 'NEW_CATEGORY';
+            const catId = isNewCat ? `cat_${crypto.randomUUID()}` : selectedCat;
+            const catTitle = isNewCat ? newCategoryName : undefined;
+
+            onAdd(catId, newItem, catTitle);
             // Reset
             setUrl('');
             setName('');
+            setNewCategoryName('');
             onClose();
         } catch (err) {
             console.error('Failed to add link', err);
@@ -49,7 +68,11 @@ export function AddLinkModal({ isOpen, onClose, onAdd, categories }: AddLinkModa
                 name: name || url,
                 url,
             };
-            onAdd(selectedCat, newItem);
+            const isNewCat = selectedCat === 'NEW_CATEGORY';
+            const catId = isNewCat ? `cat_${crypto.randomUUID()}` : selectedCat;
+            const catTitle = isNewCat ? newCategoryName : undefined;
+
+            onAdd(catId, newItem, catTitle);
             onClose();
         } finally {
             setLoading(false);
@@ -95,8 +118,23 @@ export function AddLinkModal({ isOpen, onClose, onAdd, categories }: AddLinkModa
                             {categories.map(cat => (
                                 <option key={cat.id} value={cat.id}>{cat.title}</option>
                             ))}
+                            <option value="NEW_CATEGORY" className="text-[var(--accent-cyan)] font-bold">+ Create New Category...</option>
                         </select>
                     </div>
+
+                    {selectedCat === 'NEW_CATEGORY' && (
+                        <div>
+                            <label className="block text-sm text-[var(--accent-cyan)] mb-1">New Category Title</label>
+                            <input
+                                type="text"
+                                required
+                                className="w-full bg-black/50 border border-dashed border-[var(--accent-cyan)] rounded p-2 text-white focus:border-solid outline-none"
+                                placeholder="e.g. Design Inspiration"
+                                value={newCategoryName}
+                                onChange={e => setNewCategoryName(e.target.value)}
+                            />
+                        </div>
+                    )}
 
                     <div className="flex justify-end gap-3 mt-4">
                         <button

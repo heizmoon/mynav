@@ -10,6 +10,8 @@ interface LinkCardProps {
 }
 
 export function LinkCard({ item, isEditing, onDelete }: LinkCardProps) {
+    const [showConfirm, setShowConfirm] = React.useState(false);
+
     // 1. Try Base64 Icon (if saved locally)
     // 2. Try Google Favicon Service (instant fallback for default items)
     // 3. Last Resort SVG
@@ -45,17 +47,46 @@ export function LinkCard({ item, isEditing, onDelete }: LinkCardProps) {
                 <span className="text-sm font-medium text-gray-200 text-center tracking-wide">{item.name}</span>
             </a>
 
-            {isEditing && (
+            {isEditing && !showConfirm && (
                 <button
                     onClick={(e) => {
                         e.preventDefault();
-                        onDelete(item.id);
+                        e.stopPropagation();
+                        setShowConfirm(true);
                     }}
                     className="absolute -top-2 -right-2 w-6 h-6 bg-red-600 rounded-full text-white flex items-center justify-center shadow-md hover:bg-red-700 transition-colors z-20 cursor-pointer"
                     title="Delete link"
                 >
                     &times;
                 </button>
+            )}
+
+            {showConfirm && (
+                <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/80 rounded-lg z-30 backdrop-blur-sm">
+                    <span className="text-xs text-white mb-2 font-bold">Delete?</span>
+                    <div className="flex gap-2">
+                        <button
+                            onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                onDelete(item.id);
+                            }}
+                            className="bg-red-600 hover:bg-red-700 text-white text-xs px-2 py-1 rounded transition-colors"
+                        >
+                            Yes
+                        </button>
+                        <button
+                            onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                setShowConfirm(false);
+                            }}
+                            className="bg-gray-600 hover:bg-gray-700 text-white text-xs px-2 py-1 rounded transition-colors"
+                        >
+                            No
+                        </button>
+                    </div>
+                </div>
             )}
         </div>
     );

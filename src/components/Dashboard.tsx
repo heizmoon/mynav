@@ -9,10 +9,14 @@ import { AddLinkModal } from './AddLinkModal';
 export function Dashboard() {
     const [data, setData] = useState<CategoryData[]>([]);
     const [searchTerm, setSearchTerm] = useState('');
-    const [searchMode, setSearchMode] = useState<'google' | 'bing' | 'filter'>('google');
+    const [searchMode, setSearchMode] = useState<'google' | 'bing' | 'filter' | 'translate'>('google');
     const [isEditMode, setIsEditMode] = useState(false);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [configLoaded, setConfigLoaded] = useState(false);
+
+    // Translation states
+    const [translateResult, setTranslateResult] = useState('');
+    const [isTranslating, setIsTranslating] = useState(false);
 
     // Load data on mount
     useEffect(() => {
@@ -28,21 +32,33 @@ export function Dashboard() {
         }
     }, [data, configLoaded]);
 
-    const handleAddLink = (categoryId: string, newItem: LinkItem) => {
-        setData(prev => prev.map(cat => {
-            if (cat.id === categoryId) {
-                return { ...cat, items: [...cat.items, newItem] };
+    const handleAddLink = (categoryId: string, newItem: LinkItem, newCategoryTitle?: string) => {
+        setData(prev => {
+            if (newCategoryTitle) {
+                const newCat: CategoryData = {
+                    id: categoryId,
+                    title: newCategoryTitle,
+                    items: [newItem]
+                };
+                return [...prev, newCat];
             }
-            return cat;
-        }));
+            return prev.map(cat => {
+                if (cat.id === categoryId) {
+                    return { ...cat, items: [...cat.items, newItem] };
+                }
+                return cat;
+            });
+        });
     };
 
     const handleDeleteLink = (itemId: string) => {
-        if (!confirm('Are you sure you want to delete this link?')) return;
-        setData(prev => prev.map(cat => ({
-            ...cat,
-            items: cat.items.filter(item => item.id !== itemId)
-        })));
+        setData(prev => {
+            const newData = prev.map(cat => ({
+                ...cat,
+                items: cat.items.filter(item => item.id !== itemId)
+            }));
+            return newData.filter(cat => cat.items.length > 0);
+        });
     };
 
     const handleImport = () => {
@@ -69,7 +85,7 @@ export function Dashboard() {
         input.click();
     };
 
-    const onSearchSubmit = (e: React.FormEvent) => {
+    const onSearchSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!searchTerm.trim()) return;
 
@@ -77,6 +93,27 @@ export function Dashboard() {
             window.open(`https://www.google.com/search?q=${encodeURIComponent(searchTerm)}`, '_blank');
         } else if (searchMode === 'bing') {
             window.open(`https://www.bing.com/search?q=${encodeURIComponent(searchTerm)}`, '_blank');
+        } else if (searchMode === 'translate') {
+            setIsTranslating(true);
+            setTranslateResult('');
+            try {
+                const res = await fetch('/api/translate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text: searchTerm })
+                });
+                const data = await res.json();
+                if (data.result) {
+                    setTranslateResult(data.result);
+                } else {
+                    setTranslateResult('Translation failed or returned empty.');
+                }
+            } catch (err) {
+                console.error(err);
+                setTranslateResult('Error occurred during translation.');
+            } finally {
+                setIsTranslating(false);
+            }
         }
     };
 
@@ -112,11 +149,24 @@ export function Dashboard() {
                         Bing
                     </button>
                     <button
-                        onClick={() => setSearchMode('filter')}
+                        onClick={() => {
+                            setSearchMode('filter');
+                            setTranslateResult('');
+                        }}
                         className={`px-4 py-1 text-sm uppercase tracking-wider clip-polygon transition-all ${searchMode === 'filter' ? 'bg-[var(--accent-cyan)] text-black font-bold shadow-[var(--glow-cyan)]' : 'text-gray-500 hover:text-white'}`}
                         style={{ clipPath: 'polygon(10% 0, 100% 0, 100% 100%, 0 100%)' }}
                     >
                         Filter
+                    </button>
+                    <button
+                        onClick={() => {
+                            setSearchMode('translate');
+                            setSearchTerm('');
+                        }}
+                        className={`px-4 py-1 text-sm uppercase tracking-wider clip-polygon transition-all ${searchMode === 'translate' ? 'bg-[var(--accent-cyan)] text-black font-bold shadow-[var(--glow-cyan)]' : 'text-gray-500 hover:text-white'}`}
+                        style={{ clipPath: 'polygon(10% 0, 100% 0, 100% 100%, 0 100%)' }}
+                    >
+                        Translate
                     </button>
                 </div>
 
@@ -125,11 +175,33 @@ export function Dashboard() {
                         type="text"
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
-                        placeholder={searchMode === 'filter' ? 'Type to filter links...' : `Search ${searchMode}...`}
+                        placeholder={searchMode === 'filter' ? 'Type to filter links...' : searchMode === 'translate' ? 'Type text & press Enter to translate...' : `Search ${searchMode}...`}
                         className="w-full p-4 text-lg bg-black/50 border border-[var(--accent-cyan)] text-white rounded outline-none focus:shadow-[0_0_25px_rgba(0,243,255,0.3)] transition-shadow"
                         autoFocus
                     />
+                    {searchMode === 'translate' && isTranslating && (
+                        <div className="absolute right-4 top-1/2 -translate-y-1/2 text-[var(--accent-cyan)] animate-pulse">
+                            Translating...
+                        </div>
+                    )}
                 </form>
+
+                {/* Translate Result Box */}
+                {searchMode === 'translate' && translateResult && (
+                    <div className="mt-4 p-4 rounded bg-[#1a1a20] border border-[var(--accent-purple)] shadow-[var(--glow-purple)] relative overflow-hidden group transition-all animate-in fade-in slide-in-from-top-4">
+                        <div className="text-xs text-[var(--accent-purple)] uppercase tracking-widest mb-2 opacity-80">Result</div>
+                        <p className="text-white text-lg leading-relaxed">{translateResult}</p>
+
+                        {/* Copy button */}
+                        <button
+                            onClick={() => navigator.clipboard.writeText(translateResult)}
+                            className="absolute top-2 right-2 p-2 bg-black/40 rounded border border-gray-700 text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity hover:text-[var(--accent-cyan)] hover:border-[var(--accent-cyan)]"
+                            title="Copy to clipboard"
+                        >
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                        </button>
+                    </div>
+                )}
             </div>
 
             {/* Content Grid */}
